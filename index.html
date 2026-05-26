@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Crypto Trading Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial; background:#0f172a; color:white; padding:20px; }
+    h1 { color:#38bdf8; }
+    .card { background:#1e293b; padding:16px; margin:12px 0; border-radius:12px; }
+    .buy { color:#22c55e; }
+    .wait { color:#facc15; }
+    .avoid { color:#ef4444; }
+  </style>
+</head>
+<body>
+  <h1>Crypto Trading Dashboard</h1>
+  <p>Data dari Binance. Eksekusi manual di Pintu.</p>
+
+  <div id="dashboard">Loading...</div>
+
+  <script>
+    const coins = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "SUIUSDT"];
+
+    async function getData(symbol) {
+      const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
+      const res = await fetch(url);
+      return await res.json();
+    }
+
+    function analyze(data) {
+      const change = parseFloat(data.priceChangePercent);
+      const volume = parseFloat(data.quoteVolume);
+      let decision = "WAIT";
+      let cls = "wait";
+
+      if (change > 3 && volume > 100000000) {
+        decision = "MOMENTUM / SCALPING";
+        cls = "buy";
+      } else if (change > 0.5 && change <= 3) {
+        decision = "SWING WATCHLIST";
+        cls = "wait";
+      } else if (change < -3) {
+        decision = "AVOID / HIGH RISK";
+        cls = "avoid";
+      }
+
+      const price = parseFloat(data.lastPrice);
+      const sl = price * 0.97;
+      const tp1 = price * 1.02;
+      const tp2 = price * 1.04;
+      const tp3 = price * 1.07;
+
+      return { decision, cls, price, sl, tp1, tp2, tp3 };
+    }
+
+    async function loadDashboard() {
+      const container = document.getElementById("dashboard");
+      container.innerHTML = "";
+
+      for (const coin of coins) {
+        try {
+          const data = await getData(coin);
+          const plan = analyze(data);
+
+          container.innerHTML += `
+            <div class="card">
+              <h2>${coin}</h2>
+              <p>Price: ${plan.price.toFixed(4)}</p>
+              <p>24h Change: ${data.priceChangePercent}%</p>
+              <p>Volume: $${Number(data.quoteVolume).toLocaleString()}</p>
+              <p class="${plan.cls}"><b>Plan: ${plan.decision}</b></p>
+              <p>Entry: near current price if confirmation appears</p>
+              <p>TP1: ${plan.tp1.toFixed(4)}</p>
+              <p>TP2: ${plan.tp2.toFixed(4)}</p>
+              <p>TP3: ${plan.tp3.toFixed(4)}</p>
+              <p>Stop Loss: ${plan.sl.toFixed(4)}</p>
+            </div>
+          `;
+        } catch (e) {
+          container.innerHTML += `<div class="card"><h2>${coin}</h2><p>Error loading data</p></div>`;
+        }
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
